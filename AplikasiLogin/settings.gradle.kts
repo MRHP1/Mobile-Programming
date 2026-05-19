@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AplikasiLogin"
+rootProject.name = "LoginMVVMApp"
 include(":app")

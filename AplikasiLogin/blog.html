@@ -1,0 +1,150 @@
+<h2 style="color: #333333; font-family: Arial, sans-serif;">Penerapan Room Database dan Jetpack Compose pada Aplikasi "AplikasiLogin" dengan Pola MVVM</h2><p style="font-family: Arial, sans-serif; line-height: 1.6;">Muhammad Risyad Himawan Putra - 5025231205</p><h2 style="color: #333333; font-family: Arial, sans-serif;">&nbsp;</h2>
+
+<p style="font-family: Arial, sans-serif; line-height: 1.6;">
+    <b>AplikasiLogin</b> adalah aplikasi autentikasi berbasis Android yang mengimplementasikan penyimpanan lokal secara aman menggunakan <b>Room Database</b> dan antarmuka pengguna modern deklaratif berbasis <b>Jetpack Compose</b>. Proyek ini dirancang menggunakan arsitektur bersih <b>MVVM (Model-View-ViewModel)</b> dengan pola <b>Repository</b>, memastikan pemisahan logika bisnis dari komponen antarmuka untuk menghasilkan kode yang modular, efisien, dan mudah dipelihara.
+</p>
+<p style="font-family: Arial, sans-serif; line-height: 1.6;"><b>Akses Project:</b>
+    <br />
+    <b>Source Code:</b> <a href="https://github.com/MRHP1/Mobile-Programming/tree/main/AplikasiLogin" target="_blank">https://github.com/MRHP1/Mobile-Programming/tree/main/AplikasiLogin</a>
+</p>
+<p style="font-family: Arial, sans-serif; line-height: 1.6;">&nbsp;</p>
+
+<p style="font-family: Arial, sans-serif; line-height: 1.6;">1. Deskripsi &amp; Fitur Utama Arsitektur Aplikasi</p>
+<p style="font-family: Arial, sans-serif; line-height: 1.6;">
+    Aplikasi ini dirancang dengan komponen Android modern untuk memastikan performa maksimal dan UI yang responsif. Fitur dan implementasi utamanya meliputi:
+</p>
+<ul style="font-family: Arial, sans-serif; line-height: 1.6;">
+    <li><b>Room Database &amp; SQLite:</b> Menyimpan kredensial pengguna secara lokal. Room menyediakan lapisan abstraksi di atas SQLite untuk memungkinkan akses database yang lebih lancar dan aman menggunakan objek Kotlin.</li>
+    <li><b>Kotlin Coroutines:</b> Menjalankan operasi database (baca dan tulis) secara asinkron di background thread agar aplikasi tetap responsif tanpa memblokir UI thread utama (Main Thread).</li>
+    <li><b>Pola MVVM (Model-View-ViewModel):</b> Memisahkan UI reaktif (View/Compose) dari data entity (Model) dengan menggunakan ViewModel sebagai jembatan pemrosesan state dan validasi autentikasi.</li>
+</ul>
+
+<hr style="margin: 30px 0px;" />
+
+<h3>2. Titik Masuk (Entry Point) &amp; Inisialisasi Database</h3>
+<div style="background-color: #1f1f1f; border-radius: 10px; color: #cccccc; font-family: Consolas, monospace; font-size: 14px; line-height: 1.6; overflow-x: auto; padding: 18px; white-space: pre;">
+<span style="color: #569cd6;">class</span> <span style="color: #4ec9b0;">MainActivity</span> : <span style="color: #4ec9b0;">ComponentActivity</span>() {
+    <span style="color: #569cd6;">override fun</span> <span style="color: #dcdcaa;">onCreate</span>(savedInstanceState: <span style="color: #4ec9b0;">Bundle</span>?) {
+        <span style="color: #c586c0;">super</span>.onCreate(savedInstanceState)
+        <span style="color: #569cd6;">val</span> database = <span style="color: #4ec9b0;">AppDatabase</span>.getDatabase(<span style="color: #569cd6;">this</span>)
+        <span style="color: #569cd6;">val</span> repository = <span style="color: #4ec9b0;">UserRepository</span>(database.userDao())
+        <span style="color: #569cd6;">val</span> factory = <span style="color: #4ec9b0;">LoginViewModelFactory</span>(repository)
+        setContent {
+            <span style="color: #569cd6;">val</span> viewModel: <span style="color: #4ec9b0;">LoginViewModel</span> = viewModel(factory = factory)
+            androidx.compose.runtime.<span style="color: #4ec9b0;">LaunchedEffect</span>(<span style="color: #4ec9b0;">Unit</span>) {
+                viewModel.insertDummyUser()
+            }
+            <span style="color: #4ec9b0;">LoginScreen</span>(viewModel)
+        }
+    }
+}
+</div>
+<p style="color: #555555; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin-top: 10px;">
+    <b>Penjelasan:</b> <code>MainActivity</code> bertindak sebagai pintu masuk utama aplikasi. Pada siklus hidup <code>onCreate</code>, database Room diinisialisasi melalui Singleton <code>AppDatabase</code>, lalu dioper ke <code>UserRepository</code> dan <code>LoginViewModel</code>. Kita juga menggunakan <code>LaunchedEffect(Unit)</code> untuk otomatis menyisipkan satu data pengguna default (akun admin dummy) ke dalam database saat pertama kali aplikasi dibuka agar pengujian login dapat dilakukan secara langsung.
+</p>
+
+<hr style="margin: 30px 0px;" />
+
+<h3>3. Entitas Data Pengguna (User Entity)</h3>
+<div style="background-color: #1f1f1f; border-radius: 10px; color: #cccccc; font-family: Consolas, monospace; font-size: 14px; line-height: 1.6; overflow-x: auto; padding: 18px; white-space: pre;">
+<span style="color: #569cd6;">@Entity</span>(tableName = <span style="color: #ce9178;">"users"</span>)
+<span style="color: #569cd6;">data class</span> <span style="color: #4ec9b0;">User</span>(
+    <span style="color: #569cd6;">@PrimaryKey</span>(autoGenerate = <span style="color: #569cd6;">true</span>)
+    <span style="color: #569cd6;">val</span> id: <span style="color: #4ec9b0;">Int</span> = <span style="color: #b5cea8;">0</span>,
+    <span style="color: #569cd6;">val</span> username: <span style="color: #4ec9b0;">String</span>,
+    <span style="color: #569cd6;">val</span> password: <span style="color: #4ec9b0;">String</span>
+)
+</div>
+<p style="color: #555555; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin-top: 10px;">
+    <b>Penjelasan:</b> Objek <code>User</code> dideklarasikan dengan anotasi Room <code>@Entity</code> untuk mendefinisikan struktur tabel bernama <code>users</code> di database SQLite lokal. Atribut <code>id</code> dikonfigurasi sebagai <code>PrimaryKey</code> dengan opsi <code>autoGenerate = true</code>, sementara <code>username</code> dan <code>password</code> disimpan sebagai kolom teks sederhana.
+</p>
+
+<hr style="margin: 30px 0px;" />
+
+<h3>4. Data Access Object (DAO Interface)</h3>
+<div style="background-color: #1f1f1f; border-radius: 10px; color: #cccccc; font-family: Consolas, monospace; font-size: 14px; line-height: 1.6; overflow-x: auto; padding: 18px; white-space: pre;">
+<span style="color: #569cd6;">@Dao</span>
+<span style="color: #569cd6;">interface</span> <span style="color: #4ec9b0;">UserDao</span> {
+    <span style="color: #569cd6;">@Insert</span>
+    <span style="color: #569cd6;">suspend fun</span> <span style="color: #dcdcaa;">insert</span>(user: <span style="color: #4ec9b0;">User</span>)
+
+    <span style="color: #569cd6;">@Query</span>(<span style="color: #ce9178;">"SELECT * FROM users WHERE username = :username AND password = :password"</span>)
+    <span style="color: #569cd6;">suspend fun</span> <span style="color: #dcdcaa;">login</span>(
+        username: <span style="color: #4ec9b0;">String</span>,
+        password: <span style="color: #4ec9b0;">String</span>
+    ): <span style="color: #4ec9b0;">User</span>?
+}
+</div>
+<p style="color: #555555; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin-top: 10px;">
+    <b>Penjelasan:</b> Interface <code>UserDao</code> memetakan operasi SQL ke dalam fungsi Kotlin. Fungsi <code>insert</code> ditandai dengan <code>@Insert</code> untuk menyimpan record pengguna baru. Fungsi <code>login</code> beranotasi <code>@Query</code> menjalankan pencarian baris pengguna yang memiliki kecocokan username dan password. Keduanya dideklarasikan sebagai <code>suspend fun</code> agar aman dijalankan di dalam Coroutine.
+</p>
+
+<hr style="margin: 30px 0px;" />
+
+<h3>5. Logika Autentikasi &amp; State Management (LoginViewModel)</h3>
+<div style="background-color: #1f1f1f; border-radius: 10px; color: #cccccc; font-family: Consolas, monospace; font-size: 14px; line-height: 1.6; overflow-x: auto; padding: 18px; white-space: pre;">
+<span style="color: #569cd6;">class</span> <span style="color: #4ec9b0;">LoginViewModel</span>(
+    <span style="color: #569cd6;">private val</span> repository: <span style="color: #4ec9b0;">UserRepository</span>
+) : <span style="color: #4ec9b0;">ViewModel</span>() {
+    <span style="color: #569cd6;">var</span> loginState <span style="color: #569cd6;">by</span> mutableStateOf(<span style="color: #ce9178;">""</span>)
+        <span style="color: #569cd6;">private set</span>
+
+    <span style="color: #569cd6;">fun</span> <span style="color: #dcdcaa;">login</span>(username: <span style="color: #4ec9b0;">String</span>, password: <span style="color: #4ec9b0;">String</span>) {
+        viewModelScope.launch {
+            <span style="color: #569cd6;">val</span> user = repository.login(username, password)
+            loginState = <span style="color: #569cd6;">if</span> (user != <span style="color: #569cd6;">null</span>) {
+                <span style="color: #ce9178;">"Login Berhasil"</span>
+            } <span style="color: #569cd6;">else</span> {
+                <span style="color: #ce9178;">"Username atau Password Salah"</span>
+            }
+        }
+    }
+}
+</div>
+<p style="color: #555555; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin-top: 10px;">
+    <b>Penjelasan:</b> <code>LoginViewModel</code> mengontrol logika validasi login secara terpisah dari UI. Menggunakan <code>mutableStateOf</code> untuk mendeteksi perubahan state pesan hasil login (<code>loginState</code>). Saat fungsi <code>login</code> dipicu oleh UI, coroutine diluncurkan dalam lingkup <code>viewModelScope</code> untuk menanyakan database via <code>UserRepository</code> secara asinkron. UI Compose yang mengamati <code>loginState</code> akan segera merender teks hasil autentikasi secara dinamis dan real-time.
+</p>
+
+<hr style="margin: 30px 0px;" />
+
+<h3>6. Pembuatan UI Reaktif (LoginScreen dengan Jetpack Compose)</h3>
+<p style="font-family: Arial, sans-serif; line-height: 1.8;">
+    Antarmuka dibuat sepenuhnya menggunakan framework modern <b>Jetpack Compose</b> pada file <code>LoginScreen.kt</code>:
+</p>
+<ul style="font-family: Arial, sans-serif; line-height: 1.8;">
+    <li><b>Deklarasi State Lokal:</b> Menggunakan <code>remember { mutableStateOf("") }</code> untuk menyimpan input teks dinamis pada kolom Username dan Password secara lokal di dalam screen.</li>
+    <li><b>Outlined Text Field:</b> Memanfaatkan komponen <code>TextField</code> Compose yang interaktif untuk menangkap ketikan pengguna lengkap dengan label teks di atasnya.</li>
+    <li><b>Login Action:</b> Menyediakan komponen <code>Button</code> yang ketika diklik akan secara instan memicu pemanggilan fungsi <code>viewModel.login(username, password)</code>.</li>
+    <li><b>Reaktivitas Penuh:</b> Bagian paling bawah memuat komponen <code>Text(viewModel.loginState)</code> yang secara otomatis menampilkan pesan "Login Berhasil" atau "Username atau Password Salah" berdasarkan respon reaktif database.</li>
+</ul>
+
+<hr style="margin: 30px 0px;" />
+
+<h2>Demonstrasi &amp; Tampilan Aplikasi</h2>
+<p style="font-family: Arial, sans-serif; line-height: 1.6;">Berikut adalah demonstrasi visual dari alur jalannya AplikasiLogin pada perangkat:</p>
+
+<h3 style="text-align: center;">
+    <!-- Bagian 1: Halaman Login Awal -->
+    <div style="display: inline-block; margin: 15px; text-align: center; vertical-align: top;">
+        <a href="https://blogger.googleusercontent.com/img/a/AVvXsEhYqeJEvC2B-nFuN09fE371HojZz0mCJLShNa1L3_M-1Tb_D3oeN30WionoPhSeF8Zlk3qDUptK4RE5jv1ZEE1p_xiXvvZuWI5qbEamG69vd_FhK7CfdqOVyFvluQ7VKiZUxx9A93q8NLNwwxUvjycnLMYUnXgOHpUxZyAM7XP6TrRE6kkyhcAvAJ8GOoE" style="text-decoration: none;" target="_blank">
+            <img alt="Halaman Login Awal" height="376" src="https://blogger.googleusercontent.com/img/a/AVvXsEhYqeJEvC2B-nFuN09fE371HojZz0mCJLShNa1L3_M-1Tb_D3oeN30WionoPhSeF8Zlk3qDUptK4RE5jv1ZEE1p_xiXvvZuWI5qbEamG69vd_FhK7CfdqOVyFvluQ7VKiZUxx9A93q8NLNwwxUvjycnLMYUnXgOHpUxZyAM7XP6TrRE6kkyhcAvAJ8GOoE=w169-h376" style="border: 2px solid #ddd; border-radius: 8px;" width="169" />
+        </a>
+        <p style="font-family: Arial, sans-serif; font-size: 13px; color: #555; margin-top: 8px; width: 169px; line-height: 1.4;"><b>1. Antarmuka Login Awal</b><br/>Tampilan bersih dengan form Username dan Password yang siap diinput.</p>
+    </div>
+    
+    <!-- Bagian 2: Skenario Login Gagal -->
+    <div style="display: inline-block; margin: 15px; text-align: center; vertical-align: top;">
+        <a href="https://blogger.googleusercontent.com/img/a/AVvXsEgO8xgiLe401KgTWi-2Kohv-uHsderr6d0xKUPcUDW1QErsea1z4a9gNX8C6CIyXk2Txo40YgV7eCjGjKCr4ASDJAXkH48qe7Y3dUG9rSRa3mAmqie1F1yjNjll72MbrLq4G6oKlMpjwRXlfbJBdiVTJLs0Sqmwy0fwrSFONHGlFWj_kfob6yxL9_CmtsI" style="text-decoration: none;" target="_blank">
+            <img alt="Login Gagal" height="370" src="https://blogger.googleusercontent.com/img/a/AVvXsEgO8xgiLe401KgTWi-2Kohv-uHsderr6d0xKUPcUDW1QErsea1z4a9gNX8C6CIyXk2Txo40YgV7eCjGjKCr4ASDJAXkH48qe7Y3dUG9rSRa3mAmqie1F1yjNjll72MbrLq4G6oKlMpjwRXlfbJBdiVTJLs0Sqmwy0fwrSFONHGlFWj_kfob6yxL9_CmtsI=w166-h370" style="border: 2px solid #ddd; border-radius: 8px;" width="166" />
+        </a>
+        <p style="font-family: Arial, sans-serif; font-size: 13px; color: #cc0000; margin-top: 8px; width: 166px; line-height: 1.4;"><b>2. Login Gagal</b><br/>Hasil validasi ketika data salah. Menampilkan pesan error "Username atau Password Salah".</p>
+    </div>
+    
+    <!-- Bagian 3: Skenario Login Berhasil -->
+    <div style="display: inline-block; margin: 15px; text-align: center; vertical-align: top;">
+        <a href="https://blogger.googleusercontent.com/img/a/AVvXsEiOFJVhQ30JhWuYX4t-WZO8acR8IVKoykOlsLTqcf_aEFuzN0ZAOUF-11BE1BrusAxl5Bf-mrjNVK_O8PIqj8yf60qw2GdWjO8gOvqu420Q5aiDMpaS7Kj-gjyMIDuQmg2Omv2cKufT_a1VzGKqnQFPj11NQuLHrHpcn3LWhT0EWsY_P6qE5aODMl4butg" style="text-decoration: none;" target="_blank">
+            <img alt="Login Berhasil" height="370" src="https://blogger.googleusercontent.com/img/a/AVvXsEiOFJVhQ30JhWuYX4t-WZO8acR8IVKoykOlsLTqcf_aEFuzN0ZAOUF-11BE1BrusAxl5Bf-mrjNVK_O8PIqj8yf60qw2GdWjO8gOvqu420Q5aiDMpaS7Kj-gjyMIDuQmg2Omv2cKufT_a1VzGKqnQFPj11NQuLHrHpcn3LWhT0EWsY_P6qE5aODMl4butg=w166-h370" style="border: 2px solid #ddd; border-radius: 8px;" width="166" />
+        </a>
+        <p style="font-family: Arial, sans-serif; font-size: 13px; color: #008800; margin-top: 8px; width: 166px; line-height: 1.4;"><b>3. Login Berhasil</b><br/>Autentikasi sukses dengan data cocok di Room DB. Menampilkan pesan "Login Berhasil".</p>
+    </div>
+</h3>
